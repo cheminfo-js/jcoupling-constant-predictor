@@ -46,32 +46,48 @@ class Predictor {
         inverseMap.push(map.indexOf(k));
       }*/
 
-    couplings.forEach(pair => {
-      let atoms = [];
+    couplings.forEach(chemPair => {
       // molecule.getPath(atoms, inverseMap[example[2]], inverseMap[example[3]], 3);
-      molecule.getPath(atoms, pair.fromTo[0], pair.fromTo[0], 3);
-      let torsion = 0;
-      if (atoms.length === 4) {
-        torsion = molecule.calculateTorsion(atoms);
-      }
-      let type = `${pair.pathLength}J${pair.fromLabel}${pair.toLabel}`;
-      console.log(type);
+      let type = `${chemPair.pathLength}J${chemPair.fromLabel}${chemPair.toLabel}`;
       let dbt = this.db[type];
       if (dbt) {
-        let diaID = diaIDs.find(x => x.oclID == pair.fromDiaID);
+        let diaID = diaIDs.find(x => x.oclID == chemPair.fromDiaID);
         let hose = diaID.hose;
-  
+
+        // Huggly query
         let pred = null;
         if (hose[this.maxSphereSize - 1]) {
           pred = dbt[2][hose[this.maxSphereSize - 1]];
-
           if (!pred) {
             pred = dbt[1][hose[this.maxSphereSize - 2]];
-          } 
-          if (!pred) {
-            pred = dbt[0][hose[this.maxSphereSize - 3]];
+            if (!pred) {
+              pred = dbt[0][hose[this.maxSphereSize - 3]];
+              if (pred)
+                pred.lvl = this.maxSphereSize - 2; 
+            } else {
+              pred.lvl = this.maxSphereSize - 1; 
+            }
+          } else {
+            pred.lvl = this.maxSphereSize; 
           }
         }
+        pred.couplings = [];
+        chemPair.fromTo.forEach(magPair => {
+          let atoms = [];
+          molecule.getPath(atoms, magPair[0], magPair[1], 3);
+          let feature = 0;
+          console.log(atoms);
+          if (atoms.length === 4) {
+            console.log('Torsion');
+            feature = molecule.calculateTorsion(atoms);
+            pred.couplings.push(pred.cop2[0] + pred.cop2[1] * Math.cos(feature) + pred.cop2[2] * Math.pow(Math.cos(feature), 2));
+          } else {
+            console.log('Distance');
+            feature = this.distance2(molecule, atoms[0], atoms[2]);
+            pred.couplings.push(pred.cop2[0] + pred.cop2[1] * feature + pred.cop2[2] * Math.pow(feature, 2));
+          }
+        });
+        console.log(type);
         console.log(pred);
       }
     });
