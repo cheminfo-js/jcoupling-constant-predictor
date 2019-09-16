@@ -1,0 +1,50 @@
+{
+  "name": "j-coupling-constant-predictor",
+  "version": "0.0.0",
+  "description": "Predictor for 1,2,3 and 4 J coupling constants",
+  "main": "src/index.js",
+  "files": [
+    "lib",
+    "src"
+  ],
+  "scripts": {
+    "eslint": "eslint src",
+    "eslint-fix": "npm run eslint -- --fix",
+    "test": "npm run test-coverage && npm run eslint",
+    "test-coverage": "jest --coverage",
+    "test-only": "jest"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/cheminfo-js/j-coupling-constant-predictor.git"
+  },
+  "keywords": [],
+  "author": "andres castillo",
+  "license": "MIT",
+  "bugs": {
+    "url": "https://github.com/cheminfo-js/j-coupling-constant-predictor/issues"
+  },
+  "homepage": "https://github.com/cheminfo-js/j-coupling-constant-predictor#readme",
+  "jest": {
+    "testEnvironment": "node"
+  },
+  "prettier": {
+    "arrowParens": "always",
+    "semi": true,
+    "singleQuote": true,
+    "tabWidth": 2,
+    "trailingComma": "all"
+  },
+  "devDependencies": {
+    "eslint": "^6.4.0",
+    "eslint-config-cheminfo": "^2.0.3",
+    "eslint-plugin-import": "^2.18.2",
+    "eslint-plugin-jest": "^22.17.0",
+    "eslint-plugin-prettier": "^3.1.0",
+    "jest": "^24.9.0",
+    "prettier": "^1.18.2"
+  },
+  "dependencies": {
+    "openchemlib-extended": "^6.0.0"
+  }
+}
