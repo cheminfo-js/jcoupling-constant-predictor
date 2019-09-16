@@ -45,6 +45,8 @@
     "prettier": "^1.18.2"
   },
   "dependencies": {
+    "ml-floyd-warshall": "^1.0.0",
+    "ml-matrix": "^6.4.0",
     "openchemlib-extended": "^6.0.0"
   }
 }

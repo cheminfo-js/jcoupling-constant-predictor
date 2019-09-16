@@ -3,9 +3,10 @@
 var floydWarshall = require('ml-floyd-warshall');
 var Matrix = require('ml-matrix').Matrix;
 
-const OCLE = require('../../..');
-const changeAtom = require('../../diastereotopic/migrated/changeAtom');
-const makeRacemic = require('../../diastereotopic/migrated/makeRacemic');
+const OCLE = require('openchemlib-extended');
+const changeAtom = require('./changeAtom');
+const makeRacemic = require('./makeRacemic');
+const getAllPaths = require('./getAllPaths');
 
 /**
  * Returns an array of all the different atom diaIDs that are connected
@@ -24,7 +25,7 @@ function getAllCouplings(molecule, options = {}) {
     minLength = 1,
     maxLength = 4
   } = options;
-  let paths = molecule.getAllPaths({
+  let paths =getAllPaths(molecule, {
     fromLabel,
     toLabel,
     minLength,

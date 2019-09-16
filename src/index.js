@@ -1,6 +1,7 @@
 'use strict';
 
 const OCLE = require('openchemlib-extended');
+const getAllCouplings = require('./ocle/getAllCouplings');
 
 class Predictor {
   constructor(options = {db: {}}) {
@@ -19,7 +20,7 @@ class Predictor {
       maxLength = 4
     } = options;
 
-    couplings = getAllCouplings(molecule, { fromLabel, toLabel, minLength, maxLength });
+    let couplings = getAllCouplings(molecule, { fromLabel, toLabel, minLength, maxLength });
 
     console.log(couplings)
 
