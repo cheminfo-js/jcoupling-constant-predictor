@@ -10,10 +10,30 @@ class Predictor {
     this.maxSphereSize = 5;
   }
 
+  /**
+   * Predict the JHH coupling constants for the input molecule. It uses a database
+   * compiled from the data of ab-inition calculations provided for the kaggle competition
+   * https://www.kaggle.com/c/champs-scalar-coupling and a set of rules for 4JHH extracted from 
+   * https://www.chem.wisc.edu/areas/reich/nmr/05-hmr-06-4j.htm
+   * The functions uses the 3D geometry if it is available, but it is the user who must decide
+   * if it can be used or not. It could differ from the 3D prediction, But I don't see how right now-
+   * @param {OCLE} molecule 
+   * @param {object} options 
+   */
   predictPlain(molecule, options) {
-
+    return this.predict3D(molecule, options);
   }
 
+  /**
+   * Predict the JHH coupling constants for the input molecule. It uses a database
+   * compiled from the data of ab-inition calculations provided for the kaggle competition
+   * https://www.kaggle.com/c/champs-scalar-coupling and a set of rules for 4JHH extracted from 
+   * https://www.chem.wisc.edu/areas/reich/nmr/05-hmr-06-4j.htm
+   * The functions uses the 3D geometry if it is available, but it is the user who must decide
+   * if it can be used or not. 
+   * @param {OCLE} molecule 
+   * @param {object} options 
+   */
   predict3D(molecule, options) {
     const {
       fromLabel = 'H',
@@ -23,7 +43,6 @@ class Predictor {
     } = options;
 
     let couplings = getAllCouplings(molecule, { fromLabel, toLabel, minLength, maxLength });
-    // console.log(couplings);
 
     let diaIDs = molecule.getGroupedDiastereotopicAtomIDs();
     diaIDs.sort(function (a, b) {
@@ -60,8 +79,6 @@ class Predictor {
         });
       } else {
         if (this.db[type]) {
-          console.log(type);
-          console.log(chemPair);
           let pred = this.query(this.db[type], diaIDs.find(x => x.oclID == chemPair.fromDiaID).hose, this.maxSphereSize);
           pred.couplings = [];
           chemPair.j = pred;
@@ -164,7 +181,7 @@ class Predictor {
   }
 
   /**
-   * Return the angle between the atoms on the path
+   * Return the angle between the atoms on the 3 length-path
    * @param {OCL} molecule 
    * @param {Array} path 
    * @returns {Number} 
@@ -209,7 +226,6 @@ class Predictor {
     var bond = molecule.getBond(atom1, atom2);
     return molecule.isAromaticBond(bond);
   }
-
 
   isMetaAromatic(molecule, atoms) {
     if (this.isDoubleBond(molecule, atoms[1], atoms[2]) &&
@@ -268,7 +284,6 @@ class Predictor {
   }
 
   isAttachedToHeteroAtom(molecule, atom) {
-    var result = false;
     var nbConnectedAtoms = molecule.getAllConnAtoms(atom);
     for (var j = 0; j < nbConnectedAtoms; j++) {
       var connAtom = molecule.getConnAtom(atom, j);
