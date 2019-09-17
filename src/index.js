@@ -11,6 +11,33 @@ class Predictor {
   }
 
   /**
+   * Convert the array of couplings objects into a numeric matrix
+   * containing all the coupling constant values between each pair of 
+   * atomIDs. The matrix could be asymmetric
+   * @param {Array} couplings 
+   * @param {Array} atomIDs 
+   * @param {function} mapper 
+   * @returns {array} A numeric matrix with coupling constants
+   */
+  asMatrix(couplings, atomIDs, mapper) {
+    let nbAtoms = atomIDs.length;
+    if (!mapper) 
+      mapper = j => j;
+    let jcc = new Array(nbAtoms);
+    for (let i = 0; i < nbAtoms; i++) {
+      jcc[i] = (new Array(nbAtoms)).map(x => 0);
+    }
+
+    for (let from = 0; from < nbAtoms; from++) {
+      for (let to = 0; to < nbAtoms; to++) {
+        jcc[from][to] = getValue(couplings, atomIDs[from], atomIDs[to], mapper);
+      }
+    }
+
+    return jcc;
+  }
+
+  /**
    * Predict the JHH coupling constants for the input molecule. It uses a database
    * compiled from the data of ab-inition calculations provided for the kaggle competition
    * https://www.kaggle.com/c/champs-scalar-coupling and a set of rules for 4JHH extracted from 
@@ -39,7 +66,8 @@ class Predictor {
       fromLabel = 'H',
       toLabel = 'H',
       minLength = 2,
-      maxLength = 4
+      maxLength = 4,
+      mapper = x => x
     } = options;
 
     let couplings = getAllCouplings(molecule, { fromLabel, toLabel, minLength, maxLength });
@@ -67,21 +95,19 @@ class Predictor {
     couplings.forEach(chemPair => {
       // molecule.getPath(atoms, inverseMap[example[2]], inverseMap[example[3]], 3);
       let type = `${chemPair.pathLength}J${chemPair.fromLabel}${chemPair.toLabel}`;
+      let pred = {};
       if (type == '4JHH') {
-        let pred = {couplings: []};
-        chemPair.j = pred;
         chemPair.fromTo.forEach(magPair => {
           let atoms = [];
           molecule.getPath(atoms, magPair[0], magPair[1], 4);
-          if (!this.isAttachedToHeteroAtom(molecule, magPair[0]) && !this.isAttachedToHeteroAtom(molecule, magPair[1])) {
+          if (!isAttachedToHeteroAtom(molecule, magPair[0]) && !isAttachedToHeteroAtom(molecule, magPair[1])) {
             this.predict4JHH(molecule, atoms, pred);
           }
         });
       } else {
         if (this.db[type]) {
-          let pred = this.query(this.db[type], diaIDs.find(x => x.oclID == chemPair.fromDiaID).hose, this.maxSphereSize);
-          pred.couplings = [];
-          chemPair.j = pred;
+          pred = this.query(this.db[type], diaIDs.find(x => x.oclID == chemPair.fromDiaID).hose, this.maxSphereSize);
+          pred.reg = [];
           chemPair.fromTo.forEach(magPair => {
             let atoms = [];
             molecule.getPath(atoms, magPair[0], magPair[1], 3);
@@ -91,16 +117,17 @@ class Predictor {
                 feature = Math.cos(molecule.calculateTorsion(atoms));
                 break;
               case 3:
-                feature = this.distance2(molecule, atoms[0], atoms[2]);
+                feature = distance2(molecule, atoms[0], atoms[2]);
                 break;
               case 2:
-                feature = this.distance2(molecule, atoms[0], atoms[1]);
+                feature = distance2(molecule, atoms[0], atoms[1]);
                 break;
             }
-            pred.couplings.push(pred.cop2[0] + pred.cop2[1] * feature + pred.cop2[2] * Math.pow(feature, 2));
+            pred.reg.push(pred.cop2[0] + pred.cop2[1] * feature + pred.cop2[2] * Math.pow(feature, 2));
           });
         }
       }
+      chemPair.j = mapper(pred);
     });
     return couplings;
   }
@@ -114,27 +141,35 @@ class Predictor {
   predict4JHH(molecule, atoms, pred) {
     // TODO: W couplings
     // Allylic-coupling
-    if (this.isAllylic(molecule, atoms)) {
+    if (isAllylic(molecule, atoms)) {
       // Betweeen -3 +3 Hz. Return the mean of the absolut value 1.5
-      pred.couplings.push(1.5);
+      pred.mean = 1.5;
+      pred.min = -3;
+      pred.max = 3;
       pred.kind = "allylic";
     }
     // Propargylic
-    if (this.isPropargylic(molecule, atoms)) {
+    if (isPropargylic(molecule, atoms)) {
       // Between +2 +4. Return the mean of the absolut value 3
-      pred.couplings.push(3);
+      pred.mean = 3;
+      pred.min = 2;
+      pred.max = 4;
       pred.kind = "propargylic";
     }
     // Allenic
-    if (this.isAllenic(molecule, atoms)) {
+    if (isAllenic(molecule, atoms)) {
       // Between +6 +7. Return the mean of the absolut value 6.5
-      pred.couplings.push(6.5);
+      pred.mean = 6.5;
+      pred.min = 6;
+      pred.max = 7;
       pred.kind = "allenic";
     }
     // Meta-coupling in aromatic compounds
-    if (this.isMetaAromatic(molecule, atoms)) {
+    if (isMetaAromatic(molecule, atoms)) {
       // Between +1 +3. Return the mean of the absolut value 2
-      pred.couplings.push(2);
+      pred.mean = 2;
+      pred.min = 1;
+      pred.max = 3;
       pred.kind = "mata-aromatic";
     }
   }
@@ -164,136 +199,155 @@ class Predictor {
     }
     return pred;
   }
+}
 
-  /**
-   * Return the euclidean distance between the atom1 and atom2
-   * @param {OCL} molecule 
-   * @param {Number} atom1 
-   * @param {Number} atom2 
-   * @returns {Number} 
-   */
-  distance2(molecule, atom1, atom2) {
-    let dx = molecule.getAtomX(atom1) - molecule.getAtomX(atom2);
-    let dy = molecule.getAtomY(atom1) - molecule.getAtomY(atom2);
-    let dz = molecule.getAtomZ(atom1) - molecule.getAtomZ(atom2);
-
-    return Math.sqrt(dx * dx + dy * dy + dz * dz);
-  }
-
-  /**
-   * Return the angle between the atoms on the 3 length-path
-   * @param {OCL} molecule 
-   * @param {Array} path 
-   * @returns {Number} 
-   */
-  getAngle(molecule, path) {
-    let ax = molecule.getAtomX(path[0]) - molecule.getAtomX(path[1]);
-    let ay = molecule.getAtomY(path[0]) - molecule.getAtomY(path[1]);
-    let az = molecule.getAtomZ(path[0]) - molecule.getAtomZ(path[1]);
-
-    let bx = molecule.getAtomX(path[2]) - molecule.getAtomX(path[1]);
-    let by = molecule.getAtomY(path[2]) - molecule.getAtomY(path[1]);
-    let bz = molecule.getAtomZ(path[2]) - molecule.getAtomZ(path[1]);
-
-    return Math.acos((ax * bx + ay * by + az * bz) / ((ax * ax + ay * ay + az * az) * (bx * bx + by * by + bz * bz)));
-  }
-
-  isSingleBond(molecule, atom1, atom2) {
-    var bond = molecule.getBond(atom1, atom2);
-    var bondType = molecule.getBondType(bond);
-    return bondType === 1;
-  }
-
-  isDoubleBond(molecule, atom1, atom2) {
-    var bond = molecule.getBond(atom1, atom2);
-    var bondType = molecule.getBondType(bond);
-    return bondType === 2;
-  }
-
-  isTripleBond(molecule, atom1, atom2) {
-    var bond = molecule.getBond(atom1, atom2);
-    var bondType = molecule.getBondType(bond);
-    return bondType === 4;
-  }
-
-  isDoubleOrTripleBond(molecule, atom1, atom2) {
-    var bond = molecule.getBond(atom1, atom2);
-    var bondType = molecule.getBondType(bond);
-    return bondType === 2 || bondType === 4;
-  }
-
-  isAromatic(molecule, atom1, atom2) {
-    var bond = molecule.getBond(atom1, atom2);
-    return molecule.isAromaticBond(bond);
-  }
-
-  isMetaAromatic(molecule, atoms) {
-    if (this.isDoubleBond(molecule, atoms[1], atoms[2]) &&
-      this.isSingleBond(molecule, atoms[2], atoms[3]) &&
-      this.isAromatic(molecule, atoms[1], atoms[2])) {
-      return true;
-    }
-    if (this.isDoubleBond(molecule, atoms[2], atoms[3]) &&
-      this.isSingleBond(molecule, atoms[1], atoms[2]) &&
-      this.isAromatic(molecule, atoms[2], atoms[3])) {
-      return true;
-    }
-    return false;
-  }
-
-  isAllylic(molecule, atoms) {
-    if (this.isDoubleBond(molecule, atoms[1], atoms[2]) &&
-      this.isSingleBond(molecule, atoms[2], atoms[3]) &&
-      !this.isAromatic(molecule, atoms[1], atoms[2])) {
-      return true;
-    }
-    if (this.isDoubleBond(molecule, atoms[2], atoms[3]) &&
-      this.isSingleBond(molecule, atoms[1], atoms[2]) &&
-      !this.isAromatic(molecule, atoms[2], atoms[3])) {
-      return true;
-    }
-    return false;
-  }
-
-  isPropargylic(molecule, atoms) {
-    if (this.isTripleBond(molecule, atoms[1], atoms[2]) &&
-      this.isSingleBond(molecule, atoms[2], atoms[3]) &&
-      !this.isAromatic(molecule, atoms[1], atoms[2])) {
-      return true;
-    }
-    if (this.isTripleBond(molecule, atoms[2], atoms[3]) &&
-      this.isSingleBond(molecule, atoms[1], atoms[2]) &&
-      !this.isAromatic(molecule, atoms[2], atoms[3])) {
-      return true;
-    }
-    return false;
-  }
-
-  isAllenic(molecule, atoms) {
-    if (this.isDoubleBond(molecule, atoms[1], atoms[2]) &&
-      this.isDoubleBond(molecule, atoms[2], atoms[3]) &&
-      !this.isAromatic(molecule, atoms[1], atoms[2])) {
-      return true;
-    }
-    if (this.isDoubleBond(molecule, atoms[2], atoms[3]) &&
-      this.isDoubleBond(molecule, atoms[1], atoms[2]) &&
-      !this.isAromatic(molecule, atoms[2], atoms[3])) {
-      return true;
-    }
-    return false;
-  }
-
-  isAttachedToHeteroAtom(molecule, atom) {
-    var nbConnectedAtoms = molecule.getAllConnAtoms(atom);
-    for (var j = 0; j < nbConnectedAtoms; j++) {
-      var connAtom = molecule.getConnAtom(atom, j);
-      if (!(molecule.getAtomLabel(connAtom) === 'C')) {
-        return true;
+/**
+ * Get the value of the coupling constant betweeen atom1 and atom2. The mapper
+ * specify how to convert the object to the output value
+ * @param {Array} couplings 
+ * @param {number} atom1 
+ * @param {number} atom2 
+ * @param {function} mapper 
+ * @returns {*} 
+ */
+function getValue(couplings, atom1, atom2, mapper) {
+  for (let coupling of couplings) {
+    for( let pair of coupling.fromTo) {
+      if (pair[0] == atom1 && pair[1] == atom2) {
+        return mapper(coupling.j);
       }
     }
-    return false;
   }
+}
 
+/**
+ * Return the euclidean distance between the atom1 and atom2
+ * @param {OCL} molecule 
+ * @param {Number} atom1 
+ * @param {Number} atom2 
+ * @returns {Number} 
+ */
+function distance2(molecule, atom1, atom2) {
+  let dx = molecule.getAtomX(atom1) - molecule.getAtomX(atom2);
+  let dy = molecule.getAtomY(atom1) - molecule.getAtomY(atom2);
+  let dz = molecule.getAtomZ(atom1) - molecule.getAtomZ(atom2);
+
+  return Math.sqrt(dx * dx + dy * dy + dz * dz);
+}
+
+/**
+ * Return the angle between the atoms on the 3 length-path
+ * @param {OCL} molecule 
+ * @param {Array} path 
+ * @returns {Number} 
+ */
+function getAngle(molecule, path) {
+  let ax = molecule.getAtomX(path[0]) - molecule.getAtomX(path[1]);
+  let ay = molecule.getAtomY(path[0]) - molecule.getAtomY(path[1]);
+  let az = molecule.getAtomZ(path[0]) - molecule.getAtomZ(path[1]);
+
+  let bx = molecule.getAtomX(path[2]) - molecule.getAtomX(path[1]);
+  let by = molecule.getAtomY(path[2]) - molecule.getAtomY(path[1]);
+  let bz = molecule.getAtomZ(path[2]) - molecule.getAtomZ(path[1]);
+
+  return Math.acos((ax * bx + ay * by + az * bz) / ((ax * ax + ay * ay + az * az) * (bx * bx + by * by + bz * bz)));
+}
+
+function isSingleBond(molecule, atom1, atom2) {
+  var bond = molecule.getBond(atom1, atom2);
+  var bondType = molecule.getBondType(bond);
+  return bondType === 1;
+}
+
+function isDoubleBond(molecule, atom1, atom2) {
+  var bond = molecule.getBond(atom1, atom2);
+  var bondType = molecule.getBondType(bond);
+  return bondType === 2;
+}
+
+function isTripleBond(molecule, atom1, atom2) {
+  var bond = molecule.getBond(atom1, atom2);
+  var bondType = molecule.getBondType(bond);
+  return bondType === 4;
+}
+
+function isDoubleOrTripleBond(molecule, atom1, atom2) {
+  var bond = molecule.getBond(atom1, atom2);
+  var bondType = molecule.getBondType(bond);
+  return bondType === 2 || bondType === 4;
+}
+
+function isAromatic(molecule, atom1, atom2) {
+  var bond = molecule.getBond(atom1, atom2);
+  return molecule.isAromaticBond(bond);
+}
+
+function isMetaAromatic(molecule, atoms) {
+  if (isDoubleBond(molecule, atoms[1], atoms[2]) &&
+    isSingleBond(molecule, atoms[2], atoms[3]) &&
+    isAromatic(molecule, atoms[1], atoms[2])) {
+    return true;
+  }
+  if (isDoubleBond(molecule, atoms[2], atoms[3]) &&
+    isSingleBond(molecule, atoms[1], atoms[2]) &&
+    isAromatic(molecule, atoms[2], atoms[3])) {
+    return true;
+  }
+  return false;
+}
+
+function isAllylic(molecule, atoms) {
+  if (isDoubleBond(molecule, atoms[1], atoms[2]) &&
+    isSingleBond(molecule, atoms[2], atoms[3]) &&
+    !isAromatic(molecule, atoms[1], atoms[2])) {
+    return true;
+  }
+  if (isDoubleBond(molecule, atoms[2], atoms[3]) &&
+    isSingleBond(molecule, atoms[1], atoms[2]) &&
+    !isAromatic(molecule, atoms[2], atoms[3])) {
+    return true;
+  }
+  return false;
+}
+
+function isPropargylic(molecule, atoms) {
+  if (isTripleBond(molecule, atoms[1], atoms[2]) &&
+    isSingleBond(molecule, atoms[2], atoms[3]) &&
+    !isAromatic(molecule, atoms[1], atoms[2])) {
+    return true;
+  }
+  if (isTripleBond(molecule, atoms[2], atoms[3]) &&
+    isSingleBond(molecule, atoms[1], atoms[2]) &&
+    !isAromatic(molecule, atoms[2], atoms[3])) {
+    return true;
+  }
+  return false;
+}
+
+function isAllenic(molecule, atoms) {
+  if (isDoubleBond(molecule, atoms[1], atoms[2]) &&
+    isDoubleBond(molecule, atoms[2], atoms[3]) &&
+    !isAromatic(molecule, atoms[1], atoms[2])) {
+    return true;
+  }
+  if (isDoubleBond(molecule, atoms[2], atoms[3]) &&
+    isDoubleBond(molecule, atoms[1], atoms[2]) &&
+    !isAromatic(molecule, atoms[2], atoms[3])) {
+    return true;
+  }
+  return false;
+}
+
+function isAttachedToHeteroAtom(molecule, atom) {
+  var nbConnectedAtoms = molecule.getAllConnAtoms(atom);
+  for (var j = 0; j < nbConnectedAtoms; j++) {
+    var connAtom = molecule.getConnAtom(atom, j);
+    if (!(molecule.getAtomLabel(connAtom) === 'C')) {
+      return true;
+    }
+  }
+  return false;
 }
 
 module.exports = Predictor;
+
