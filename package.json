@@ -42,7 +42,8 @@
     "eslint-plugin-jest": "^22.17.0",
     "eslint-plugin-prettier": "^3.1.0",
     "jest": "^24.9.0",
-    "prettier": "^1.18.2"
+    "prettier": "^1.18.2",    
+    "nmr-predictor": "^1.2.0"
   },
   "dependencies": {
     "ml-floyd-warshall": "^1.0.0",
