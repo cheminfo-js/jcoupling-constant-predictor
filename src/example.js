@@ -10,4 +10,4 @@ let db = JSON.parse(fs.readFileSync('data/cheminfoHH.json').toString());
 
 let p = new Predictor({db});
 
-p.predict3D(result.molecule, {});
+console.log(p.predict3D(result.molecule, {}));
