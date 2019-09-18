@@ -127,9 +127,10 @@ class Predictor {
           });
         }
       }
-      chemPair.j = mapper(pred);
+      if (Object.keys(pred).length !== 0)
+        chemPair.j = mapper(pred);
     });
-    return couplings;
+    return couplings.filter(entry => entry.j);
   }
 
   /**
