@@ -5,6 +5,7 @@ const nmrPredictor = require('nmr-predictor');
 const Predictor = require('./index');
 const fs = require('fs');
 const path = require('path');
+const stat = require('ml-stat/array');
 
 
 let db = JSON.parse(fs.readFileSync('data/cheminfoHH.json').toString());
@@ -13,13 +14,16 @@ let folder = '/Users/acastillo//Documents/dataNMR/spinus/'
 let data = fs.readdirSync(folder).filter(file => file.indexOf('.mol') >= 0);
 
 let nMols = data.length;
-let nSamples = 1;
+let nSamples = 10;
 let p = new Predictor({ db });
 
-let stats = { min: Number.MAX_VALUE, max: Number.MIN_VALUE, sum: 0 };
+// let stats = { min: Number.MAX_VALUE, max: Number.MIN_VALUE, sum: 0, count: 0 };
+let stats = [];
+
 
 for (let n = 0; n < nSamples; n++) {
-    let randomSample = n;//Math.round(Math.random() * nMols);
+    console.log(n)
+    let randomSample = n; //Math.round(Math.random() * nMols);
     let molfile = fs.readFileSync(path.join(folder, data[randomSample])).toString();
     // console.log(molfile)
     let spinus = JSON.parse(fs.readFileSync(path.join(folder, data[randomSample].replace('.mol', '.json'))));
@@ -36,15 +40,53 @@ for (let n = 0; n < nSamples; n++) {
     let jSpinus = symmetrizeInPlace(asMatrix(spinus, hydrogens));
     
     let couplings = p.predict3D(molmap.molecule, { mapper: x => x }).filter(x => x.fromDiaID !== x.toDiaID);
-    let jCheminfo = symmetrizeInPlace(p.asMatrix(couplings, hydrogens, x => Math.abs(x.mean)));
+    let jCheminfo = symmetrizeInPlace(p.asMatrix(couplings, hydrogens, x => Math.abs(x.median)  * 1));
 
 
-    console.log(JSON.stringify(jCheminfo))
-    // console.log(jSpinus)
+    //console.log(JSON.stringify(jCheminfo))
+    //console.log(JSON.stringify(jSpinus))
 
+    let result = compare(jCheminfo, jSpinus);
+    stats.push(...result);
+    //stats.sum += result.sum;
+    //stats.count += result.count;
+    //console.log(result);
+    //console.log(result.sum / result.count);
+    //console.log(result.absError + ' ' + result.count);
 }
 
-console.log(stats);
+
+
+function compare(a, b) {
+    let lng = a.length;
+    /*let sum = 0;
+    let countA = 0;
+    let countB = 0;
+    let countAB = 0;*/
+    let diff = [];
+    for (let i = 0; i < lng; i++) {
+        for (let j = i + 1; j < lng; j++) {
+            if(a[i][j]) {
+                if (b[i][j]) {
+                    diff.push(a[i][j] - b[i][j]);
+                    //sum += Math.abs(a[i][j] - b[i][j]);
+                    //countAB++;
+                } else {
+                    diff.push(a[i][j]);
+                    //sum += Math.abs(a[i][j]);
+                    //countA++;
+                }
+            } else if (b[i][j]) {
+                diff.push(b[i][j]);
+                //sum += Math.abs(b[i][j]);
+                //countB++;
+            }
+        }
+    }
+    return diff;
+    //return {sum, countAB, countA, countB, count: countAB + countA + countB };
+
+}
 
 function asMatrix(couplings, atomIDs) {
     let nbAtoms = atomIDs.length;
@@ -93,4 +135,17 @@ function symmetrizeInPlace(couplings) {
         }
     }
     return couplings;
+}
+
+
+function getStats(entry) {
+    const minMax = stat.minMax(entry);
+    return {
+        min: Math.round(minMax.min * 1000) / 1000,
+        max: Math.round(minMax.max * 1000) / 1000,
+        ncs: entry.length,
+        mean: Math.round(stat.mean(entry) * 1000) / 1000,
+        median: Math.round(stat.median(entry) * 1000) / 1000,
+        std: Math.round(stat.standardDeviation(entry, false) * 1000) / 1000
+    };
 }
