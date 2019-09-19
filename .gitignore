@@ -1,0 +1,9 @@
+node_modules
+.idea
+logs
+*.log
+npm-debug.log*
+coverage
+.eslintcache
+dist
+.DS_Store
