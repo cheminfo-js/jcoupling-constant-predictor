@@ -21,7 +21,7 @@ class Predictor {
    */
   asMatrix(couplings, atomIDs, mapper) {
     let nbAtoms = atomIDs.length;
-    if (!mapper) 
+    if (!mapper)
       mapper = j => j;
     let jcc = new Array(nbAtoms);
     for (let i = 0; i < nbAtoms; i++) {
@@ -107,27 +107,29 @@ class Predictor {
       } else {
         if (this.db[type]) {
           pred = this.query(this.db[type], diaIDs.find(x => x.oclID == chemPair.fromDiaID).hose, this.maxSphereSize);
-          pred.reg = [];
-          chemPair.fromTo.forEach(magPair => {
-            let atoms = [];
-            molecule.getPath(atoms, magPair[0], magPair[1], 3);
-            let feature = 0;
-            switch (atoms.length) {
-              case 4:
-                feature = Math.cos(molecule.calculateTorsion(atoms));
-                break;
-              case 3:
-                feature = distance2(molecule, atoms[0], atoms[2]);
-                break;
-              case 2:
-                feature = distance2(molecule, atoms[0], atoms[1]);
-                break;
-            }
-            pred.reg.push(pred.cop2[0] + pred.cop2[1] * feature + pred.cop2[2] * Math.pow(feature, 2));
-          });
+          if (pred) {
+            pred.reg = [];
+            chemPair.fromTo.forEach(magPair => {
+              let atoms = [];
+              molecule.getPath(atoms, magPair[0], magPair[1], 3);
+              let feature = 0;
+              switch (atoms.length) {
+                case 4:
+                  feature = Math.cos(molecule.calculateTorsion(atoms));
+                  break;
+                case 3:
+                  feature = distance2(molecule, atoms[0], atoms[2]);
+                  break;
+                case 2:
+                  feature = distance2(molecule, atoms[0], atoms[1]);
+                  break;
+              }
+              pred.reg.push(pred.cop2[0] + pred.cop2[1] * feature + pred.cop2[2] * Math.pow(feature, 2));
+            });
+          }
         }
       }
-      if (Object.keys(pred).length !== 0)
+      if (pred && Object.keys(pred).length !== 0)
         chemPair.j = mapper(pred);
     });
     return couplings.filter(entry => entry.j);
@@ -213,7 +215,7 @@ class Predictor {
  */
 function getValue(couplings, atom1, atom2, mapper) {
   for (let coupling of couplings) {
-    for( let pair of coupling.fromTo) {
+    for (let pair of coupling.fromTo) {
       if (pair[0] == atom1 && pair[1] == atom2) {
         return mapper(coupling.j);
       }
