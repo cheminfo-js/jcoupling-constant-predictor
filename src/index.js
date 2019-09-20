@@ -147,6 +147,7 @@ class Predictor {
     if (isAllylic(molecule, atoms)) {
       // Betweeen -3 +3 Hz. Return the mean of the absolut value 1.5
       pred.mean = 1.5;
+      pred.median = 1.5/1.5;
       pred.min = -3;
       pred.max = 3;
       pred.kind = "allylic";
@@ -155,6 +156,7 @@ class Predictor {
     if (isPropargylic(molecule, atoms)) {
       // Between +2 +4. Return the mean of the absolut value 3
       pred.mean = 3;
+      pred.median = 3/1.5;
       pred.min = 2;
       pred.max = 4;
       pred.kind = "propargylic";
@@ -163,6 +165,7 @@ class Predictor {
     if (isAllenic(molecule, atoms)) {
       // Between +6 +7. Return the mean of the absolut value 6.5
       pred.mean = 6.5;
+      pred.median = 6.5/1.5;
       pred.min = 6;
       pred.max = 7;
       pred.kind = "allenic";
@@ -171,6 +174,7 @@ class Predictor {
     if (isMetaAromatic(molecule, atoms)) {
       // Between +1 +3. Return the mean of the absolut value 2
       pred.mean = 2;
+      pred.median = 2/1.5;
       pred.min = 1;
       pred.max = 3;
       pred.kind = "mata-aromatic";

@@ -6,15 +6,15 @@ const Predictor = require('./index');
 const fs = require('fs');
 const path = require('path');
 const stat = require('ml-stat/array');
+const histogram = require('./histogram');
 
-
-let db = JSON.parse(fs.readFileSync('data/cheminfoHH.json').toString());
+let db = JSON.parse(fs.readFileSync('data/cheminfo-absHH.json').toString());
 
 let folder = '/Users/acastillo//Documents/dataNMR/spinus/'
 let data = fs.readdirSync(folder).filter(file => file.indexOf('.mol') >= 0);
 
 let nMols = data.length;
-let nSamples = 100;
+let nSamples = 200;
 let p = new Predictor({ db });
 
 // let stats = { min: Number.MAX_VALUE, max: Number.MIN_VALUE, sum: 0, count: 0 };
@@ -22,7 +22,7 @@ let stats = [];
 
 
 for (let n = 0; n < nSamples; n++) {
-    console.log(n)
+ // console.log(n)
     let randomSample = Math.round(Math.random() * nMols);
     let molfile = fs.readFileSync(path.join(folder, data[randomSample])).toString();
     // console.log(molfile)
@@ -40,7 +40,7 @@ for (let n = 0; n < nSamples; n++) {
     let jSpinus = symmetrizeInPlace(asMatrix(spinus, hydrogens));
     
     let couplings = p.predict3D(molmap.molecule, { mapper: x => x }).filter(x => x.fromDiaID !== x.toDiaID);
-    let jCheminfo = symmetrizeInPlace(p.asMatrix(couplings, hydrogens, x => Math.abs(x.median)  * 1));
+    let jCheminfo = symmetrizeInPlace(p.asMatrix(couplings, hydrogens, x => Math.abs(x.median)  * 1.5));
 
 
     //console.log(JSON.stringify(jCheminfo))
@@ -55,7 +55,13 @@ for (let n = 0; n < nSamples; n++) {
     //console.log(result.absError + ' ' + result.count);
 }
 
-console.log(getStats(stats));
+let resume = getStats(stats);
+fs.writeFileSync("stats.txt", stats.join());
+
+let hist =  histogram({data: stats, bins: linspace(resume.min, resume.max, 100)});
+console.log(resume.median + ' ' +resume.mean);
+console.log(hist.map(x => x.y).join(','));
+
 
 
 function compare(a, b) {
@@ -69,7 +75,7 @@ function compare(a, b) {
         for (let j = i + 1; j < lng; j++) {
             if(a[i][j]) {
                 if (b[i][j]) {
-                    diff.push(a[i][j] - b[i][j]);
+                    diff.push(Math.abs(a[i][j] - b[i][j]));
                     //sum += Math.abs(a[i][j] - b[i][j]);
                     //countAB++;
                 } else {
@@ -150,3 +156,18 @@ function getStats(entry) {
         std: Math.round(stat.standardDeviation(entry, false) * 1000) / 1000
     };
 }
+
+function linspace(a, b, n) {
+    if (typeof n === 'undefined') n = Math.max(Math.round(b - a) + 1, 1);
+    if (n < 2) {
+      return n === 1 ? [a] : [];
+    }
+    var i;
+    var ret = Array(n);
+    n--;
+    for (i = n; i >= 0; i--) {
+      ret[i] = (i * b + (n - i) * a) / n;
+    }
+    return ret;
+  }
+  
