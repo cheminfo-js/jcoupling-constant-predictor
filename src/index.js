@@ -132,7 +132,7 @@ class Predictor {
       if (pred && Object.keys(pred).length !== 0)
         chemPair.j = mapper(pred);
     });
-    return couplings.filter(entry => entry.j);
+    return couplings;// couplings.filter(entry => entry.j);
   }
 
   /**
@@ -147,7 +147,7 @@ class Predictor {
     if (isAllylic(molecule, atoms)) {
       // Betweeen -3 +3 Hz. Return the mean of the absolut value 1.5
       pred.mean = 1.5;
-      pred.median = 1.5/1.5;
+      pred.median = 1.5;
       pred.min = -3;
       pred.max = 3;
       pred.kind = "allylic";
@@ -156,7 +156,7 @@ class Predictor {
     if (isPropargylic(molecule, atoms)) {
       // Between +2 +4. Return the mean of the absolut value 3
       pred.mean = 3;
-      pred.median = 3/1.5;
+      pred.median = 3;
       pred.min = 2;
       pred.max = 4;
       pred.kind = "propargylic";
@@ -165,20 +165,21 @@ class Predictor {
     if (isAllenic(molecule, atoms)) {
       // Between +6 +7. Return the mean of the absolut value 6.5
       pred.mean = 6.5;
-      pred.median = 6.5/1.5;
+      pred.median = 6.5;
       pred.min = 6;
       pred.max = 7;
       pred.kind = "allenic";
     }
     // Meta-coupling in aromatic compounds
-    if (isMetaAromatic(molecule, atoms)) {
+    // Disabled because it was producing a lot missmatches with spinus
+    /*if (isMetaAromatic(molecule, atoms)) {
       // Between +1 +3. Return the mean of the absolut value 2
       pred.mean = 2;
-      pred.median = 2/1.5;
+      pred.median = 2;
       pred.min = 1;
       pred.max = 3;
       pred.kind = "mata-aromatic";
-    }
+    }*/
   }
 
   /**
@@ -188,7 +189,7 @@ class Predictor {
    * @param {Number} maxSphereSize 
    */
   query(dbt, hose, maxSphereSize) {
-    let pred = null;
+    let pred =  null;
     if (hose[maxSphereSize - 1]) {
       pred = dbt[2][hose[maxSphereSize - 1]];
       if (!pred) {
@@ -205,6 +206,11 @@ class Predictor {
       }
     }
     return pred;
+    /* if (pred && pred.lvl)
+      return pred;
+    else {
+      return {mean: 4.43, median: 2.925, min: 2.925, max: 4.43, lvl: 0, cop2: [2.925, 0, 0]}
+    } */
   }
 }
 
@@ -221,7 +227,7 @@ function getValue(couplings, atom1, atom2, mapper) {
   for (let coupling of couplings) {
     for (let pair of coupling.fromTo) {
       if (pair[0] == atom1 && pair[1] == atom2) {
-        return mapper(coupling.j);
+        return mapper(coupling);
       }
     }
   }

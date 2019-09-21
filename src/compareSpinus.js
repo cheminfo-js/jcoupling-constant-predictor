@@ -14,7 +14,7 @@ let folder = '/Users/acastillo//Documents/dataNMR/spinus/'
 let data = fs.readdirSync(folder).filter(file => file.indexOf('.mol') >= 0);
 
 let nMols = data.length;
-let nSamples = 400;
+let nSamples = 100;
 let p = new Predictor({ db });
 
 // let stats = { min: Number.MAX_VALUE, max: Number.MIN_VALUE, sum: 0, count: 0 };
@@ -22,8 +22,8 @@ let stats = [];
 
 
 for (let n = 0; n < nSamples; n++) {
- // console.log(n)
-    let randomSample = Math.round(Math.random() * nMols);
+    // console.log(n)
+    let randomSample = n; //Math.round(Math.random() * nMols);
     let molfile = fs.readFileSync(path.join(folder, data[randomSample])).toString();
     // console.log(molfile)
     let spinus = JSON.parse(fs.readFileSync(path.join(folder, data[randomSample].replace('.mol', '.json'))));
@@ -38,64 +38,61 @@ for (let n = 0; n < nSamples; n++) {
 
     // console.log(hydrogens);
     let jSpinus = symmetrizeInPlace(asMatrix(spinus, hydrogens));
-    
-    let couplings = p.predict3D(molmap.molecule, { mapper: x => x }).filter(x => x.fromDiaID !== x.toDiaID);
-    let jCheminfo = symmetrizeInPlace(p.asMatrix(couplings, hydrogens, x => Math.abs(x.median)  * 1.5));
 
+    let couplings = p.predict3D(molmap.molecule, {maxLength: 6, mapper: x => x });//.filter(x => x.fromDiaID !== x.toDiaID);
+    let pairs = couplings.map(value => {
+        return {fromTo: value.fromTo, pathLength: value.pathLength};
+    });
+    couplings = couplings.filter(x => (x.fromDiaID !== x.toDiaID) && x.j);
 
-    //console.log(JSON.stringify(jCheminfo))
-    //console.log(JSON.stringify(jSpinus))
+    let jCheminfo = symmetrizeInPlace(p.asMatrix(couplings, hydrogens, crazyFit));
+    let jTypes = p.asMatrix(pairs, hydrogens, x => x.pathLength);
 
-    let result = compare(jCheminfo, jSpinus);
+    let result = compare(jCheminfo, jSpinus, jTypes);
     stats.push(...result);
-    //stats.sum += result.sum;
-    //stats.count += result.count;
-    //console.log(result);
-    //console.log(result.sum / result.count);
-    //console.log(result.absError + ' ' + result.count);
 }
 
-let resume = getStats(stats);
-fs.writeFileSync("stats.txt", stats.join());
+let diff = stats.map(x => Math.abs(x[0] - x[1]));
+let resume = getStats(diff);
 
-let hist =  histogram({data: stats, bins: linspace(resume.min, resume.max, 100)});
-console.log(resume.median + ' ' +resume.mean);
+fs.writeFileSync("stats.csv", stats.map(x => x[0] + ' ' + x[1] + ' ' + x[2]).join("\n"));
+
+let hist = histogram({ data: diff, bins: linspace(resume.min, resume.max / 2, 100) });
+console.log(resume);
+console.log(resume.median + ' ' + resume.mean);
 console.log(hist.map(x => x.y).join(','));
 
 
+function crazyFit(val) {
+    let x = val.j;
+    if (!x.kind) {
+        let value = Math.abs(x.median) * 1.65;
+        return value < 17 ? value : Math.abs(x.median);
+    }
+    else
+        return Math.abs(x.median) * 1;
+}
 
-function compare(a, b) {
+function compare(a, b, types) {
     let lng = a.length;
-    /*let sum = 0;
-    let countA = 0;
-    let countB = 0;
-    let countAB = 0;*/
     let diff = [];
     for (let i = 0; i < lng; i++) {
         for (let j = i + 1; j < lng; j++) {
-            if(a[i][j]) {
+            if (a[i][j]) {
                 if (b[i][j]) {
-                    diff.push(Math.abs(a[i][j] - b[i][j]));
-                    //sum += Math.abs(a[i][j] - b[i][j]);
-                    //countAB++;
+                    diff.push([a[i][j], b[i][j], types[i][j]]);
                 } else {
-                    diff.push(a[i][j]);
-                    //sum += Math.abs(a[i][j]);
-                    //countA++;
+                    diff.push([a[i][j], 0, types[i][j]]);
                 }
             } else if (b[i][j]) {
-                diff.push(b[i][j]);
-                //sum += Math.abs(b[i][j]);
-                //countB++;
+                diff.push([0, b[i][j], types[i][j]]);
             }
         }
     }
     return diff;
-    //return {sum, countAB, countA, countB, count: countAB + countA + countB };
-
 }
 
-function asMatrix(couplings, atomIDs) {
+function asMatrix(couplings, atomIDs, f) {
     let nbAtoms = atomIDs.length;
     let jcc = new Array(nbAtoms);
     for (let i = 0; i < nbAtoms; i++) {
@@ -119,10 +116,10 @@ function getValue(couplings, atom1, atom2) {
             for (let i = 0; i < coupling.j.length; i++) {
                 let ji = coupling.j[i];
                 if (ji.assignment[0] * 1 === atom2) {
-                    return  Math.abs(ji.coupling);
+                    return Math.abs(ji.coupling);
                 }
             }
-        } 
+        }
     }
     return undefined;
 }
@@ -131,7 +128,7 @@ function symmetrizeInPlace(couplings) {
     let nbAtoms = couplings.length;
     for (let from = 0; from < nbAtoms; from++) {
         for (let to = from + 1; to < nbAtoms; to++) {
-            if (couplings[from][to] !== undefined && couplings[to][from] !==undefined) {
+            if (couplings[from][to] !== undefined && couplings[to][from] !== undefined) {
                 couplings[from][to] = (couplings[from][to] + couplings[to][from]) / 2;
                 couplings[to][from] = couplings[from][to];
             } else if (couplings[from][to] === undefined) {
@@ -160,14 +157,13 @@ function getStats(entry) {
 function linspace(a, b, n) {
     if (typeof n === 'undefined') n = Math.max(Math.round(b - a) + 1, 1);
     if (n < 2) {
-      return n === 1 ? [a] : [];
+        return n === 1 ? [a] : [];
     }
     var i;
     var ret = Array(n);
     n--;
     for (i = n; i >= 0; i--) {
-      ret[i] = (i * b + (n - i) * a) / n;
+        ret[i] = (i * b + (n - i) * a) / n;
     }
     return ret;
-  }
-  
+}
