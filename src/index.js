@@ -96,15 +96,18 @@ class Predictor {
       // molecule.getPath(atoms, inverseMap[example[2]], inverseMap[example[3]], 3);
       let type = `${chemPair.pathLength}J${chemPair.fromLabel}${chemPair.toLabel}`;
       let pred = {};
-      if (type == '4JHH') {
+      /*if (type == '4JHH' || type == '5JHH') {
         chemPair.fromTo.forEach(magPair => {
           let atoms = [];
-          molecule.getPath(atoms, magPair[0], magPair[1], 4);
+          molecule.getPath(atoms, magPair[0], magPair[1], 5);
           if (!isAttachedToHeteroAtom(molecule, magPair[0]) && !isAttachedToHeteroAtom(molecule, magPair[1])) {
-            this.predict4JHH(molecule, atoms, pred);
+            if (type == '4JHH')
+              this.predict4JHH(molecule, atoms, pred);
+            if (type == '5JHH')
+              this.predict5JHH(molecule, atoms, pred);
           }
         });
-      } else {
+      } else */{
         if (this.db[type]) {
           pred = this.query(this.db[type], diaIDs.find(x => x.oclID == chemPair.fromDiaID).hose, this.maxSphereSize);
           if (pred) {
@@ -182,6 +185,32 @@ class Predictor {
     }*/
   }
 
+    /**
+   * Give a value for 5JHH based on: https://www.chem.wisc.edu/areas/reich/nmr/05-hmr-06-4j.htm
+   * @param {OCLE} molecule 
+   * @param {Array} atoms 
+   * @param {object} pred 
+   */
+  predict5JHH(molecule, atoms, pred) {
+    // console.log(atoms)
+    if (isHomoAllylic(molecule, atoms)) {
+      // Between 0 +8. Return 0.5 because I think
+      pred.mean = 4;
+      pred.median = 0,5;
+      pred.min = 0;
+      pred.max = 8;
+      pred.kind = "homoallylic";
+    }
+    if (isHomoPropargylic(molecule, atoms)) {
+      // Between +2 +4. Return the mean of the absolut value 3
+      pred.mean = 3;
+      pred.median = 1.5;
+      pred.min = 2;
+      pred.max = 4;
+      pred.kind = "homopropargylic";
+    }
+  }
+
   /**
    * Query the JCC db with the given hose code
    * @param {Array} dbt 
@@ -189,7 +218,7 @@ class Predictor {
    * @param {Number} maxSphereSize 
    */
   query(dbt, hose, maxSphereSize) {
-    let pred =  null;
+    let pred = null;
     if (hose[maxSphereSize - 1]) {
       pred = dbt[2][hose[maxSphereSize - 1]];
       if (!pred) {
@@ -206,10 +235,10 @@ class Predictor {
       }
     }
     return pred;
-    /* if (pred && pred.lvl)
+    /*if (pred && pred.lvl)
       return pred;
     else {
-      return {mean: 4.43, median: 2.925, min: 2.925, max: 4.43, lvl: 0, cop2: [2.925, 0, 0]}
+      return {mean: 2.9, median: 2.925, min: 2.925, max: 4.43, lvl: 0, cop2: [2.925, 0, 0]}
     } */
   }
 }
@@ -358,6 +387,24 @@ function isAttachedToHeteroAtom(molecule, atom) {
     if (!(molecule.getAtomLabel(connAtom) === 'C')) {
       return true;
     }
+  }
+  return false;
+}
+
+function isHomoAllylic(molecule, atoms) {
+  if (isSingleBond(molecule, atoms[1], atoms[2]) &&
+    isSingleBond(molecule, atoms[3], atoms[4]) &&
+    isDoubleBond(molecule, atoms[2], atoms[3])) {
+    return true;
+  }
+  return false;
+}
+
+function isHomoPropargylic(molecule, atoms) {
+  if (isSingleBond(molecule, atoms[1], atoms[2]) &&
+    isSingleBond(molecule, atoms[3], atoms[4]) &&
+    isTripleBond(molecule, atoms[2], atoms[3])) {
+    return true;
   }
   return false;
 }

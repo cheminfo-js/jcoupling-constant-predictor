@@ -8,13 +8,13 @@ const path = require('path');
 const stat = require('ml-stat/array');
 const histogram = require('./histogram');
 
-let db = JSON.parse(fs.readFileSync('data/cheminfo-absHH.json').toString());
+let db = JSON.parse(fs.readFileSync('data/cheminfo-abs-spinusHH.json').toString());
 
 let folder = '/Users/acastillo//Documents/dataNMR/spinus/'
 let data = fs.readdirSync(folder).filter(file => file.indexOf('.mol') >= 0);
 
 let nMols = data.length;
-let nSamples = 100;
+let nSamples = 200;
 let p = new Predictor({ db });
 
 // let stats = { min: Number.MAX_VALUE, max: Number.MIN_VALUE, sum: 0, count: 0 };
@@ -23,19 +23,20 @@ let stats = [];
 
 for (let n = 0; n < nSamples; n++) {
     // console.log(n)
-    let randomSample = n; //Math.round(Math.random() * nMols);
+    let randomSample = Math.round(Math.random() * nMols);
     let molfile = fs.readFileSync(path.join(folder, data[randomSample])).toString();
     // console.log(molfile)
     let spinus = JSON.parse(fs.readFileSync(path.join(folder, data[randomSample].replace('.mol', '.json'))));
     let molmap = OCLE.Molecule.fromMolfileWithAtomMap(molfile);
-    // console.log(JSON.stringify(spinus))
+    //console.log(JSON.stringify(spinus))
 
-    let hydrogens = molmap.molecule.getGroupedDiastereotopicAtomIDs({ atomLabel: 'H' });
-    hydrogens = hydrogens.reduce((acum, value) => {
+    let diaIDsH = molmap.molecule.getGroupedDiastereotopicAtomIDs({ atomLabel: 'H' });
+    let hydrogens = diaIDsH.reduce((acum, value) => {
         acum.push(...value.atoms);
         return acum;
     }, []);
 
+    // validate(spinus, diaIDsH);
     // console.log(hydrogens);
     let jSpinus = symmetrizeInPlace(asMatrix(spinus, hydrogens));
 
@@ -63,9 +64,31 @@ console.log(resume.median + ' ' + resume.mean);
 console.log(hist.map(x => x.y).join(','));
 
 
+/**
+ * Validate that the atom number in the spinus predictions are the same as in oclIDs
+ * @param {*} spinus 
+ * @param {*} diaIds 
+ */
+function validate(spinus, diaIds) {
+    let diaMap = {};
+    diaIds.forEach(x =>  {
+        let atoms = x.atoms;
+        atoms.forEach(y => {
+            diaMap[y] = x.oclID;
+        });
+    });
+    let spinusMap = {};
+    spinus.forEach(x => {
+        if (diaMap[x.atomIDs[0]*1] != x.diaIDs[0]) {
+            console.log('Fail!!!!');
+        }
+    });
+}
+
 function crazyFit(val) {
     let x = val.j;
-    if (!x.kind) {
+    //console.log(val)
+    if (val.pathLength < 4) {
         let value = Math.abs(x.median) * 1.65;
         return value < 17 ? value : Math.abs(x.median);
     }
@@ -115,7 +138,7 @@ function getValue(couplings, atom1, atom2) {
         if (coupling.atomIDs[0] * 1 === atom1) {
             for (let i = 0; i < coupling.j.length; i++) {
                 let ji = coupling.j[i];
-                if (ji.assignment[0] * 1 === atom2) {
+                if (ji.assignment[0] * 1 === atom2 && ji.diaID !== coupling.diaIDs[0]) {
                     return Math.abs(ji.coupling);
                 }
             }
