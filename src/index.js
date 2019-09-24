@@ -78,12 +78,15 @@ class Predictor {
     });
 
     // HOSE codes from Diasterotopic atom IDs.
+    let diaIDsMap = {};
     for (let k = 0; k < diaIDs.length; k++) {
       diaIDs[k].hose = Util.getHoseCodesFromDiastereotopicID(diaIDs[k].oclID, {
         maxSphereSize: this.maxSphereSize,
         type: 0
       });
+      diaIDsMap[diaIDs[k].oclID] = diaIDs[k];
     }
+
 
     // console.log(diaIDs);
     /* map = result.map;
@@ -109,7 +112,7 @@ class Predictor {
         });
       } else */{
         if (this.db[type]) {
-          pred = this.query(this.db[type], diaIDs.find(x => x.oclID == chemPair.fromDiaID).hose, this.maxSphereSize);
+          pred = this.query(this.db, type, diaIDsMap[chemPair.fromDiaID].hose, diaIDsMap[chemPair.toDiaID].hose, this.maxSphereSize);
           if (pred) {
             pred.reg = [];
             chemPair.fromTo.forEach(magPair => {
@@ -185,18 +188,18 @@ class Predictor {
     }*/
   }
 
-    /**
-   * Give a value for 5JHH based on: https://www.chem.wisc.edu/areas/reich/nmr/05-hmr-06-4j.htm
-   * @param {OCLE} molecule 
-   * @param {Array} atoms 
-   * @param {object} pred 
-   */
+  /**
+ * Give a value for 5JHH based on: https://www.chem.wisc.edu/areas/reich/nmr/05-hmr-06-4j.htm
+ * @param {OCLE} molecule 
+ * @param {Array} atoms 
+ * @param {object} pred 
+ */
   predict5JHH(molecule, atoms, pred) {
     // console.log(atoms)
     if (isHomoAllylic(molecule, atoms)) {
       // Between 0 +8. Return 0.5 because I think
       pred.mean = 4;
-      pred.median = 0,5;
+      pred.median = 0, 5;
       pred.min = 0;
       pred.max = 8;
       pred.kind = "homoallylic";
@@ -217,31 +220,55 @@ class Predictor {
    * @param {Array} hose 
    * @param {Number} maxSphereSize 
    */
-  query(dbt, hose, maxSphereSize) {
+  query(db, type, hoseFrom, hoseTo, maxSphereSize) {
+    let dbt = db[type];
     let pred = null;
-    if (hose[maxSphereSize - 1]) {
-      pred = dbt[2][hose[maxSphereSize - 1]];
-      if (!pred) {
-        pred = dbt[1][hose[maxSphereSize - 2]];
+    let lng = type.substring(0, 1) * 1;
+    if (lng < 4) {
+      if (hoseFrom[maxSphereSize - 1]) {
+        pred = dbt[2][hoseFrom[maxSphereSize - 1]];
         if (!pred) {
-          pred = dbt[0][hose[maxSphereSize - 3]];
-          if (pred)
-            pred.lvl = maxSphereSize - 2;
+          pred = dbt[1][hoseFrom[maxSphereSize - 2]];
+          if (!pred) {
+            pred = dbt[0][hoseFrom[maxSphereSize - 3]];
+            if (pred)
+              pred.lvl = maxSphereSize - 2;
+          } else {
+            pred.lvl = maxSphereSize - 1;
+          }
         } else {
-          pred.lvl = maxSphereSize - 1;
+          pred.lvl = maxSphereSize;
         }
-      } else {
-        pred.lvl = maxSphereSize;
+      }
+    } else {
+      if (hoseFrom[maxSphereSize - 1] && hoseTo[maxSphereSize - 1]) {
+        let key = canCat(hoseFrom[maxSphereSize - 1], hoseTo[maxSphereSize - 1]);
+        pred = dbt[2][key];
+        if (pred)
+          pred.lvl = maxSphereSize;
       }
     }
-    return pred;
     /*if (pred && pred.lvl)
       return pred;
     else {
       return {mean: 2.9, median: 2.925, min: 2.925, max: 4.43, lvl: 0, cop2: [2.925, 0, 0]}
     } */
+    return pred;
   }
 }
+
+
+  /**
+   * Cat the strings a and b doing min(a, b) + max(a, b)
+   * @param {*} a 
+   * @param {*} b 
+   */
+  function canCat(a, b) {
+    if (a < b)
+      return a + b;
+    else
+      return b + a;
+  }
 
 /**
  * Get the value of the coupling constant betweeen atom1 and atom2. The mapper
