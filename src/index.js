@@ -5,6 +5,10 @@ const getAllCouplings = require('./ocle/getAllCouplings');
 const Util = OCLE.Util;
 
 class Predictor {
+  /**
+   * Constructor
+   * @param {object} options Actually it is not an option. You must provide a db
+   */
   constructor(options = { db: {} }) {
     this.db = options.db;
     this.maxSphereSize = 5;
@@ -53,13 +57,18 @@ class Predictor {
 
   /**
    * Predict the JHH coupling constants for the input molecule. It uses a database
-   * compiled from the data of ab-inition calculations provided for the kaggle competition
+   * compiled from the data of ab-initio calculations provided for the kaggle competition
    * https://www.kaggle.com/c/champs-scalar-coupling and a set of rules for 4JHH extracted from 
    * https://www.chem.wisc.edu/areas/reich/nmr/05-hmr-06-4j.htm
    * The functions uses the 3D geometry if it is available, but it is the user who must decide
    * if it can be used or not. 
    * @param {OCLE} molecule 
    * @param {object} options 
+   * @options {string} fromLabel
+   * @options {string} toLabel
+   * @options {number} minLength
+   * @options {number} maxLength 
+   * @options {function} mapper A function to transform out the j component of the prediction.  
    */
   predict3D(molecule, options) {
     const {

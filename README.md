@@ -6,7 +6,7 @@
 [![David deps][david-image]][david-url]
 [![npm download][download-image]][download-url]
 
-Predictor of 1,2,3 and 4 J coupling constants
+Predictor of 1,2,3,4 and 5 J H-H coupling constants
 
 ## Installation
 
@@ -17,7 +17,20 @@ Predictor of 1,2,3 and 4 J coupling constants
 ## Example
 
 ```js
-const jCouplingConstantPredictor = require('j-coupling-constant-predictor');
+const predictor = require('j-coupling-constant-predictor');
+const fs = require('fs');
+const OCLE = require('openchemlib-extended');
+
+let molfile = fs.readFileSync('moleculeWithExpandedHydrogens.mol').toString();
+let molmap = OCLE.Molecule.fromMolfileWithAtomMap(molfile);
+
+//Predict the coupling constants using the 3D information of the molecule. Use the mean of the most similar
+//entries as value for the coupling constant. You can use median aswell.
+let couplings = predictor.predict3D(molmap.molecule, {maxLength: 6, mapper: x => x.mean });
+
+// Remove the couplings between chemically equivalent atoms
+couplings = couplings.filter(x => x.fromDiaID !== x.toDiaID);
+
 ```
 
 ## License
