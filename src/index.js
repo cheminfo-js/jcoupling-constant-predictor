@@ -5,6 +5,7 @@ const getAllCouplings = require('./ocle/getAllCouplings');
 const Util = OCLE.Util;
 
 class Predictor {
+  
   /**
    * Constructor
    * @param {object} options Actually it is not an option. You must provide a db
