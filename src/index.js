@@ -5,7 +5,6 @@ const getAllCouplings = require('./ocle/getAllCouplings');
 const Util = OCLE.Util;
 
 class Predictor {
-  
   /**
    * Constructor
    * @param {object} options Actually it is not an option. You must provide a db
@@ -142,6 +141,20 @@ class Predictor {
               }
               pred.reg.push(pred.cop2[0] + pred.cop2[1] * feature + pred.cop2[2] * Math.pow(feature, 2));
             });
+          } else {
+            if (!pred || !pred.lvl) {
+              if (type === '4JHH') {
+                pred = {};
+                chemPair.fromTo.forEach(magPair => {
+                  let atoms = [];
+                  molecule.getPath(atoms, magPair[0], magPair[1], 4);
+                  if (!isAttachedToHeteroAtom(molecule, magPair[0]) && !isAttachedToHeteroAtom(molecule, magPair[1])) {
+                    if (type == '4JHH')
+                      pred = this.predict4JHH(molecule, atoms, pred);
+                  }
+                });
+              }
+            }
           }
         }
       }
@@ -158,9 +171,19 @@ class Predictor {
    * @param {object} pred 
    */
   predict4JHH(molecule, atoms, pred) {
+    // Meta-coupling in aromatic compounds
+    // Disabled because it was producing a lot missmatches with spinus
+    if (isMetaAromatic(molecule, atoms)) {
+      // Between +1 +3. Return the mean of the absolut value 2
+      pred.mean = 2;
+      pred.median = 1.6;
+      pred.min = 1;
+      pred.max = 3;
+      pred.kind = "mata-aromatic";
+    }
     // TODO: W couplings
     // Allylic-coupling
-    if (isAllylic(molecule, atoms)) {
+    /*if (isAllylic(molecule, atoms)) {
       // Betweeen -3 +3 Hz. Return the mean of the absolut value 1.5
       pred.mean = 1.5;
       pred.median = 1.5;
@@ -185,17 +208,8 @@ class Predictor {
       pred.min = 6;
       pred.max = 7;
       pred.kind = "allenic";
-    }
-    // Meta-coupling in aromatic compounds
-    // Disabled because it was producing a lot missmatches with spinus
-    /*if (isMetaAromatic(molecule, atoms)) {
-      // Between +1 +3. Return the mean of the absolut value 2
-      pred.mean = 2;
-      pred.median = 2;
-      pred.min = 1;
-      pred.max = 3;
-      pred.kind = "mata-aromatic";
     }*/
+    return pred;
   }
 
   /**
@@ -212,6 +226,7 @@ class Predictor {
       pred.median = 0, 5;
       pred.min = 0;
       pred.max = 8;
+      pred.lvl = 0;
       pred.kind = "homoallylic";
     }
     if (isHomoPropargylic(molecule, atoms)) {
@@ -268,17 +283,17 @@ class Predictor {
 }
 
 
-  /**
-   * Cat the strings a and b doing min(a, b) + max(a, b)
-   * @param {*} a 
-   * @param {*} b 
-   */
-  function canCat(a, b) {
-    if (a < b)
-      return a + b;
-    else
-      return b + a;
-  }
+/**
+ * Cat the strings a and b doing min(a, b) + max(a, b)
+ * @param {*} a 
+ * @param {*} b 
+ */
+function canCat(a, b) {
+  if (a < b)
+    return a + b;
+  else
+    return b + a;
+}
 
 /**
  * Get the value of the coupling constant betweeen atom1 and atom2. The mapper
@@ -362,15 +377,16 @@ function isAromatic(molecule, atom1, atom2) {
 }
 
 function isMetaAromatic(molecule, atoms) {
-  if (isDoubleBond(molecule, atoms[1], atoms[2]) &&
-    isSingleBond(molecule, atoms[2], atoms[3]) &&
-    isAromatic(molecule, atoms[1], atoms[2])) {
-    return true;
-  }
-  if (isDoubleBond(molecule, atoms[2], atoms[3]) &&
-    isSingleBond(molecule, atoms[1], atoms[2]) &&
-    isAromatic(molecule, atoms[2], atoms[3])) {
-    return true;
+  if (isAromatic(molecule, atoms[1], atoms[2]) &&
+      isAromatic(molecule, atoms[2], atoms[3])) {
+        if (isDoubleBond(molecule, atoms[1], atoms[2]) &&
+          isSingleBond(molecule, atoms[2], atoms[3])) {
+          return true;
+        }
+        if (isDoubleBond(molecule, atoms[2], atoms[3]) &&
+          isSingleBond(molecule, atoms[1], atoms[2])) {
+          return true;
+        }
   }
   return false;
 }

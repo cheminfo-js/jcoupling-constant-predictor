@@ -4,16 +4,30 @@ const fs = require('fs');
 const Predictor = require('../src/index');
 
 let result = OCLE.Molecule.fromMolfileWithAtomMap(fs.readFileSync('data/ethylbenzene3d.mol').toString());
-let db = JSON.parse(fs.readFileSync('data/cheminfoHH.json').toString());
+let db = JSON.parse(fs.readFileSync('data/cheminfo-abs-spinusHH.json').toString());
 
 let p = new Predictor({ db });
-let couplings = p.predict3D(result.molecule, { mapper: x => x });
-let hydrogens = result.molecule.getGroupedDiastereotopicAtomIDs({ atomLabel: 'H' });
-hydrogens = hydrogens.reduce((acum, value) => {
+let couplings = p.predict3D(result.molecule, { mapper: x => x }).filter(x => (x.fromDiaID !== x.toDiaID) && x.j);;
+let diaIDsH = result.molecule.getGroupedDiastereotopicAtomIDs({ atomLabel: 'H' });
+console.log(diaIDsH);
+let hydrogens = diaIDsH.reduce((acum, value) => {
     acum.push(...value.atoms);
     return acum;
 }, []);
-let jcc = p.asMatrix(couplings, hydrogens, x => Math.abs(x.mean));
+console.log(hydrogens);
+let jCheminfo = p.asMatrix(couplings, hydrogens, crazyFit);
+
 
 // console.log(JSON.stringify(couplings));
-console.log(jcc);
+console.log(jCheminfo);
+
+function crazyFit(val) {
+    let x = val.j;
+    //console.log(val)
+    if (val.pathLength < 4) {
+        let value = Math.abs(x.median) * 1.65;
+        return value < 17 ? value : Math.abs(x.median);
+    }
+    else
+        return Math.abs(x.median) * 1;
+}
