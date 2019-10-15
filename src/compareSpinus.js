@@ -14,16 +14,15 @@ let folder = '/Users/acastillo//Documents/dataNMR/spinus/'
 let data = fs.readdirSync(folder).filter(file => file.indexOf('.mol') >= 0);
 
 let nMols = data.length;
-let nSamples = 2000;
+let nSamples = 200;
 let p = new Predictor({ db });
 
 // let stats = { min: Number.MAX_VALUE, max: Number.MIN_VALUE, sum: 0, count: 0 };
 let stats = [];
 
 
-for (let n = 0; n < nSamples; n++) {
-    // console.log(n)
-    let randomSample = Math.round(Math.random() * nMols);
+for (let n = 5; n < nSamples; n++) {
+    let randomSample = n;//Math.round(Math.random() * nMols);
     let molfile = fs.readFileSync(path.join(folder, data[randomSample])).toString();
     // console.log(molfile)
     let spinus = JSON.parse(fs.readFileSync(path.join(folder, data[randomSample].replace('.mol', '.json'))));

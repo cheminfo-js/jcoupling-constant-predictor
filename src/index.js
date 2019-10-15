@@ -123,47 +123,48 @@ class Predictor {
               this.predict5JHH(molecule, atoms, pred);
           }
         });
-      } else */{
-        if (this.db[type]) {
-          pred = this.query(this.db, type, diaIDsMap[chemPair.fromDiaID].hose, diaIDsMap[chemPair.toDiaID].hose, this.maxSphereSize);
-          if (pred) {
-            pred.reg = [];
-            chemPair.fromTo.forEach(magPair => {
-              let atoms = [];
-              molecule.getPath(atoms, magPair[0], magPair[1], 3);
-              let feature = 0;
-              switch (atoms.length) {
-                case 4:
-                  feature = Math.cos(molecule.calculateTorsion(atoms));
-                  break;
-                case 3:
-                  feature = distance2(molecule, atoms[0], atoms[2]);
-                  break;
-                case 2:
-                  feature = distance2(molecule, atoms[0], atoms[1]);
-                  break;
-              }
-              pred.reg.push(pred.cop2[0] + pred.cop2[1] * feature + pred.cop2[2] * Math.pow(feature, 2));
-            });
-          } else {
-            if (!pred || !pred.lvl) {
-              if (type === '4JHH' || type === '5JHH') {
-                pred = {};
-                chemPair.fromTo.forEach(magPair => {
-                  let atoms = [];
-                  molecule.getPath(atoms, magPair[0], magPair[1], 4);
-                  if (!isAttachedToHeteroAtom(molecule, magPair[0]) && !isAttachedToHeteroAtom(molecule, magPair[1])) {
-                    if (type == '4JHH' )
-                      pred = this.predict4JHH(molecule, atoms, pred);
-                    if (type == '5JHH' )
-                      pred = this.predict5JHH(molecule, atoms, pred);
+      } else */
+      if (this.db[type]) {
+        pred = this.query(this.db, type, diaIDsMap[chemPair.fromDiaID].hose, diaIDsMap[chemPair.toDiaID].hose, this.maxSphereSize);
+        if (pred) {
+          pred.reg = [];
+          chemPair.fromTo.forEach(magPair => {
+            let atoms = [];
+            molecule.getPath(atoms, magPair[0], magPair[1], 3);
+            let feature = 0;
+            switch (atoms.length) {
+              case 4:
+                feature = Math.cos(molecule.calculateTorsion(atoms));
+                break;
+              case 3:
+                feature = distance2(molecule, atoms[0], atoms[2]);
+                break;
+              case 2:
+                feature = distance2(molecule, atoms[0], atoms[1]);
+                break;
+            }
+            pred.reg.push(pred.cop2[0] + pred.cop2[1] * feature + pred.cop2[2] * Math.pow(feature, 2));
+          });
+        } else {
+          if (!pred || !pred.lvl) {
+            if (type === '4JHH' || type === '5JHH') {
+              pred = {};
+              chemPair.fromTo.forEach(magPair => {
+                let atoms = [];
+                molecule.getPath(atoms, magPair[0], magPair[1], 5);
+                if (!isAttachedToHeteroAtom(molecule, magPair[0]) && !isAttachedToHeteroAtom(molecule, magPair[1])) {
+                  if (type == '4JHH')
+                    pred = this.predict4JHH(molecule, atoms, pred);
+                  if (type == '5JHH') {
+                    pred = this.predict5JHH(molecule, atoms, pred);
                   }
-                });
-              }
+                }
+              });
             }
           }
         }
       }
+
       if (pred && Object.keys(pred).length !== 0)
         chemPair.j = mapper(pred);
     });
@@ -229,7 +230,7 @@ class Predictor {
     if (isHomoAllylic(molecule, atoms)) {
       // Between 0 +8. Return 0.5 because I think
       pred.mean = 4;
-      pred.median = 0,5;
+      pred.median = 0, 5;
       pred.min = 0;
       pred.max = 8;
       pred.lvl = 0;
@@ -243,6 +244,8 @@ class Predictor {
       pred.max = 4;
       pred.kind = "homopropargylic";
     }
+
+    return pred;
   }
 
   /**
@@ -263,12 +266,12 @@ class Predictor {
           if (!pred) {
             pred = dbt[0][hoseFrom[maxSphereSize - 3]];
             if (pred)
-              pred = Object.assign({lvl: maxSphereSize - 2}, pred);
+              pred = Object.assign({ lvl: maxSphereSize - 2 }, pred);
           } else {
-            pred = Object.assign({lvl: maxSphereSize - 1}, pred);
+            pred = Object.assign({ lvl: maxSphereSize - 1 }, pred);
           }
         } else {
-          pred = Object.assign({lvl: maxSphereSize}, pred);
+          pred = Object.assign({ lvl: maxSphereSize }, pred);
         }
       }
     } else {
@@ -276,7 +279,7 @@ class Predictor {
         let key = canCat(hoseFrom[maxSphereSize - 1], hoseTo[maxSphereSize - 1]);
         pred = dbt[2][key];
         if (pred)
-          pred = Object.assign({lvl: maxSphereSize}, pred);
+          pred = Object.assign({ lvl: maxSphereSize }, pred);
       }
     }
     /*if (pred && pred.lvl)
@@ -384,15 +387,15 @@ function isAromatic(molecule, atom1, atom2) {
 
 function isMetaAromatic(molecule, atoms) {
   if (isAromatic(molecule, atoms[1], atoms[2]) &&
-      isAromatic(molecule, atoms[2], atoms[3])) {
-        if (isDoubleBond(molecule, atoms[1], atoms[2]) &&
-          isSingleBond(molecule, atoms[2], atoms[3])) {
-          return true;
-        }
-        if (isDoubleBond(molecule, atoms[2], atoms[3]) &&
-          isSingleBond(molecule, atoms[1], atoms[2])) {
-          return true;
-        }
+    isAromatic(molecule, atoms[2], atoms[3])) {
+    if (isDoubleBond(molecule, atoms[1], atoms[2]) &&
+      isSingleBond(molecule, atoms[2], atoms[3])) {
+      return true;
+    }
+    if (isDoubleBond(molecule, atoms[2], atoms[3]) &&
+      isSingleBond(molecule, atoms[1], atoms[2])) {
+      return true;
+    }
   }
   return false;
 }
