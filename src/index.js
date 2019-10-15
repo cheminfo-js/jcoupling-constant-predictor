@@ -230,7 +230,7 @@ class Predictor {
     if (isHomoAllylic(molecule, atoms)) {
       // Between 0 +8. Return 0.5 because I think
       pred.mean = 4;
-      pred.median = 0, 5;
+      pred.median = 0.5;
       pred.min = 0;
       pred.max = 8;
       pred.lvl = 0;
