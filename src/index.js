@@ -227,6 +227,7 @@ class Predictor {
  */
   predict5JHH(molecule, atoms, pred) {
     // console.log(atoms)
+    // It need more conditions. It is only for the atoms in a special angle
     if (isHomoAllylic(molecule, atoms)) {
       // Between 0 +8. Return 0.5 because I think
       pred.mean = 4;
@@ -457,7 +458,7 @@ function isHomoAllylic(molecule, atoms) {
   if (isSingleBond(molecule, atoms[1], atoms[2]) &&
     isSingleBond(molecule, atoms[3], atoms[4]) &&
     isDoubleBond(molecule, atoms[2], atoms[3]) &&
-    !isAromatic(atoms[2], atoms[3])) {
+    !isAromatic(molecule, atoms[2], atoms[3])) {
     return true;
   }
   return false;
