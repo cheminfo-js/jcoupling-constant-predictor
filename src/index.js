@@ -11,6 +11,10 @@ class Predictor {
    */
   constructor(options = { db: {} }) {
     this.db = options.db;
+    // HOSE 5
+    // gOpHALiLkW@@@_tbADj`    4.7 to 7.6
+    // daD@`@fTfUjZ@B@C~dHBIU@ 4.85  7.7
+    //daF@`FBYRYVkh@`@OzP`HeT  5
     this.maxSphereSize = 5;
   }
 
@@ -280,7 +284,7 @@ class Predictor {
     else {
       return {mean: 2.9, median: 2.925, min: 2.925, max: 4.43, lvl: 0, cop2: [2.925, 0, 0]}
     } */
-    return pred;
+    return Object.assign({}, pred);
   }
 }
 
