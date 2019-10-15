@@ -143,14 +143,16 @@ class Predictor {
             });
           } else {
             if (!pred || !pred.lvl) {
-              if (type === '4JHH') {
+              if (type === '4JHH' || type === '5JHH') {
                 pred = {};
                 chemPair.fromTo.forEach(magPair => {
                   let atoms = [];
                   molecule.getPath(atoms, magPair[0], magPair[1], 4);
                   if (!isAttachedToHeteroAtom(molecule, magPair[0]) && !isAttachedToHeteroAtom(molecule, magPair[1])) {
-                    if (type == '4JHH')
+                    if (type == '4JHH' )
                       pred = this.predict4JHH(molecule, atoms, pred);
+                    if (type == '5JHH' )
+                      pred = this.predict5JHH(molecule, atoms, pred);
                   }
                 });
               }
@@ -223,7 +225,7 @@ class Predictor {
     if (isHomoAllylic(molecule, atoms)) {
       // Between 0 +8. Return 0.5 because I think
       pred.mean = 4;
-      pred.median = 0, 5;
+      pred.median = 0,5;
       pred.min = 0;
       pred.max = 8;
       pred.lvl = 0;
