@@ -263,12 +263,12 @@ class Predictor {
           if (!pred) {
             pred = dbt[0][hoseFrom[maxSphereSize - 3]];
             if (pred)
-              pred.lvl = maxSphereSize - 2;
+              pred = Object.assign({lvl: maxSphereSize - 2}, pred);
           } else {
-            pred.lvl = maxSphereSize - 1;
+            pred = Object.assign({lvl: maxSphereSize - 1}, pred);
           }
         } else {
-          pred.lvl = maxSphereSize;
+          pred = Object.assign({lvl: maxSphereSize}, pred);
         }
       }
     } else {
@@ -276,7 +276,7 @@ class Predictor {
         let key = canCat(hoseFrom[maxSphereSize - 1], hoseTo[maxSphereSize - 1]);
         pred = dbt[2][key];
         if (pred)
-          pred.lvl = maxSphereSize;
+          pred = Object.assign({lvl: maxSphereSize}, pred);
       }
     }
     /*if (pred && pred.lvl)
@@ -284,7 +284,7 @@ class Predictor {
     else {
       return {mean: 2.9, median: 2.925, min: 2.925, max: 4.43, lvl: 0, cop2: [2.925, 0, 0]}
     } */
-    return Object.assign({}, pred);
+    return pred;
   }
 }
 
