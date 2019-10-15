@@ -456,7 +456,8 @@ function isAttachedToHeteroAtom(molecule, atom) {
 function isHomoAllylic(molecule, atoms) {
   if (isSingleBond(molecule, atoms[1], atoms[2]) &&
     isSingleBond(molecule, atoms[3], atoms[4]) &&
-    isDoubleBond(molecule, atoms[2], atoms[3])) {
+    isDoubleBond(molecule, atoms[2], atoms[3]) &&
+    !isAromatic(atoms[2], atoms[3])) {
     return true;
   }
   return false;
