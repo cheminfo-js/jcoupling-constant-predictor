@@ -100,30 +100,11 @@ class Predictor {
       diaIDsMap[diaIDs[k].oclID] = diaIDs[k];
     }
 
-
-    // console.log(diaIDs);
-    /* map = result.map;
-      inverseMap = [];
-      for (let k = 0; k < map.length; k++) {
-        inverseMap.push(map.indexOf(k));
-      }*/
-
     couplings.forEach(chemPair => {
       // molecule.getPath(atoms, inverseMap[example[2]], inverseMap[example[3]], 3);
       let type = `${chemPair.pathLength}J${chemPair.fromLabel}${chemPair.toLabel}`;
       let pred = {};
-      /*if (type == '4JHH' || type == '5JHH') {
-        chemPair.fromTo.forEach(magPair => {
-          let atoms = [];
-          molecule.getPath(atoms, magPair[0], magPair[1], 5);
-          if (!isAttachedToHeteroAtom(molecule, magPair[0]) && !isAttachedToHeteroAtom(molecule, magPair[1])) {
-            if (type == '4JHH')
-              this.predict4JHH(molecule, atoms, pred);
-            if (type == '5JHH')
-              this.predict5JHH(molecule, atoms, pred);
-          }
-        });
-      } else */
+
       if (this.db[type]) {
         pred = this.query(this.db, type, diaIDsMap[chemPair.fromDiaID].hose, diaIDsMap[chemPair.toDiaID].hose, this.maxSphereSize);
         if (pred) {
@@ -261,18 +242,12 @@ class Predictor {
     let lng = type.substring(0, 1) * 1;
     if (lng < 4) {
       if (hoseFrom[maxSphereSize - 1]) {
-        pred = dbt[2][hoseFrom[maxSphereSize - 1]];
-        if (!pred) {
-          pred = dbt[1][hoseFrom[maxSphereSize - 2]];
-          if (!pred) {
-            pred = dbt[0][hoseFrom[maxSphereSize - 3]];
-            if (pred)
-              pred = Object.assign({ lvl: maxSphereSize - 2 }, pred);
-          } else {
-            pred = Object.assign({ lvl: maxSphereSize - 1 }, pred);
+        for (let lvl = 1; lvl < 4; lvl++) {
+          pred = dbt[3 - lvl][hoseFrom[maxSphereSize - lvl]];
+          if (pred) {
+            pred = Object.assign({ lvl: maxSphereSize - lvl + 1, key:  hoseFrom[maxSphereSize - lvl]}, pred);
+            break;
           }
-        } else {
-          pred = Object.assign({ lvl: maxSphereSize }, pred);
         }
       }
     } else {
@@ -280,14 +255,9 @@ class Predictor {
         let key = canCat(hoseFrom[maxSphereSize - 1], hoseTo[maxSphereSize - 1]);
         pred = dbt[2][key];
         if (pred)
-          pred = Object.assign({ lvl: maxSphereSize }, pred);
+          pred = Object.assign({ lvl: maxSphereSize, key: key }, pred);
       }
     }
-    /*if (pred && pred.lvl)
-      return pred;
-    else {
-      return {mean: 2.9, median: 2.925, min: 2.925, max: 4.43, lvl: 0, cop2: [2.925, 0, 0]}
-    } */
     return pred;
   }
 }
