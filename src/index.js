@@ -360,25 +360,25 @@ function getAngle(molecule, path) {
 function isSingleBond(molecule, atom1, atom2) {
   var bond = molecule.getBond(atom1, atom2);
   var bondType = molecule.getBondType(bond);
-  return bondType === 1;
+  return bondType === 1 && molecule.getAtomLabel(atom1) === 'C' && molecule.getAtomLabel(atom2) === 'C';
 }
 
 function isDoubleBond(molecule, atom1, atom2) {
   var bond = molecule.getBond(atom1, atom2);
   var bondType = molecule.getBondType(bond);
-  return bondType === 2;
+  return bondType === 2 && molecule.getAtomLabel(atom1) === 'C' && molecule.getAtomLabel(atom2) === 'C';
 }
 
 function isTripleBond(molecule, atom1, atom2) {
   var bond = molecule.getBond(atom1, atom2);
   var bondType = molecule.getBondType(bond);
-  return bondType === 4;
+  return bondType === 4 && molecule.getAtomLabel(atom1) === 'C' && molecule.getAtomLabel(atom2) === 'C';
 }
 
 function isDoubleOrTripleBond(molecule, atom1, atom2) {
   var bond = molecule.getBond(atom1, atom2);
   var bondType = molecule.getBondType(bond);
-  return bondType === 2 || bondType === 4;
+  return (bondType === 2 || bondType === 4 ) && molecule.getAtomLabel(atom1) === 'C' && molecule.getAtomLabel(atom2) === 'C';;
 }
 
 function isAromatic(molecule, atom1, atom2) {

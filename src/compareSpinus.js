@@ -9,20 +9,23 @@ const stat = require('ml-stat/array');
 const histogram = require('./histogram');
 
 let db = JSON.parse(fs.readFileSync('data/cheminfo-abs-spinusHH.json').toString());
+db['3JHH'][2]['gOpHALiLkW@@@_tbADj`'] = {cop2: [0, 0, 0], max: 8, min: 7, mean: 7.4, median: 7.6, std: 0.1, ncs: 31};// 4.7 to 7.6
+db['3JHH'][2]['daD@`@fTfUjZ@B@C~dHBIU@'] = {cop2: [0, 0, 0], max: 8, min: 7, mean: 7.5, median: 7.7, std: 0.1, ncs: 31};// 4.85  7.7
+
 
 let folder = '/Users/acastillo//Documents/dataNMR/spinus/'
 let data = fs.readdirSync(folder).filter(file => file.indexOf('.mol') >= 0);
 
 let nMols = data.length;
-let nSamples = 200;
+let nSamples = 2000;
 let p = new Predictor({ db });
 
 // let stats = { min: Number.MAX_VALUE, max: Number.MIN_VALUE, sum: 0, count: 0 };
 let stats = [];
 
 
-for (let n = 5; n < nSamples; n++) {
-    let randomSample = n;//Math.round(Math.random() * nMols);
+for (let n = 0; n < nSamples; n++) {
+    let randomSample = Math.round(Math.random() * nMols);
     let molfile = fs.readFileSync(path.join(folder, data[randomSample])).toString();
     // console.log(molfile)
     let spinus = JSON.parse(fs.readFileSync(path.join(folder, data[randomSample].replace('.mol', '.json'))));
